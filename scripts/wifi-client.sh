@@ -1,46 +1,57 @@
 #!/bin/bash
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; RESET='\033[0m'
 
+step() { echo -e "  ${CYAN}>> $1${RESET}"; }
+ok()   { echo -e "  ${GREEN}OK $1${RESET}"; }
+fail() { echo -e "  ${RED}!! $1${RESET}"; }
+
 echo ""
-echo -e "  ${YELLOW}Connecte-toi au WiFi 'Migratix' avant de continuer.${RESET}"
-read -p "  Appuie sur Entrée quand c'est fait..."
+echo -e "  ${YELLOW}Connecte-toi d'abord au WiFi 'Migratix'.${RESET}"
+echo -e "  ${YELLOW}(Le mot de passe est affiché sur l'ancien PC)${RESET}"
+read -rp "  Appuie sur Entrée quand tu es connecté..."
 
-# L'ancien PC sert les fichiers sur le port 8765
-# Sur Linux hotspot : IP source = première adresse du sous-réseau
-# On essaie les IPs communes des hotspots
-POSSIBLE_IPS=("192.168.137.1" "192.168.3.1" "10.42.0.1")
-SERVER_IP=""
+read -rp "  Entre l'URL affichée sur l'ancien PC (http://...): " URL
 
-for IP in "${POSSIBLE_IPS[@]}"; do
-    if curl -s --connect-timeout 2 "http://$IP:8765/" &>/dev/null; then
-        SERVER_IP="$IP"
-        break
-    fi
-done
-
-if [ -z "$SERVER_IP" ]; then
-    read -p "  IP non trouvée automatiquement. Entre l'IP de l'ancien PC : " SERVER_IP
-fi
-
-echo -e "  ${CYAN}>> Connexion à $SERVER_IP...${RESET}"
-
-DEST="$HOME/migratix-import"
-mkdir -p "$DEST"
-
-# Télécharger tous les fichiers via wget ou curl
-if command -v wget &>/dev/null; then
-    wget -r -np -nH -q --show-progress "http://$SERVER_IP:8765/" -P "$DEST"
-elif command -v curl &>/dev/null; then
-    curl -s "http://$SERVER_IP:8765/" | grep -oP '(?<=href=")[^"]+' | while read -r FILE; do
-        mkdir -p "$DEST/$(dirname $FILE)"
-        curl -s "http://$SERVER_IP:8765/$FILE" -o "$DEST/$FILE"
-    done
-else
-    echo -e "  ${RED}wget ou curl requis.${RESET}"
+if [ -z "$URL" ]; then
+    fail "URL vide."
     exit 1
 fi
 
-echo -e "  ${GREEN}OK Fichiers reçus. Lancement de l'importation...${RESET}"
-bash "$SCRIPT_DIR/import.sh" "$DEST"
+DEST="$HOME/migratix-import"
+ARCHIVE="$DEST/migratix.tar.gz"
+mkdir -p "$DEST"
+
+step "Téléchargement de l'archive..."
+
+if command -v curl &>/dev/null; then
+    curl -L --progress-bar --connect-timeout 15 --retry 3 -o "$ARCHIVE" "$URL"
+elif command -v wget &>/dev/null; then
+    wget --progress=bar --tries=3 --timeout=15 -O "$ARCHIVE" "$URL"
+else
+    fail "curl ou wget requis."
+    exit 1
+fi
+
+if [ ! -f "$ARCHIVE" ] || [ ! -s "$ARCHIVE" ]; then
+    fail "Téléchargement échoué ou archive vide."
+    exit 1
+fi
+ok "Archive téléchargée ($(du -sh "$ARCHIVE" | cut -f1))"
+
+step "Extraction..."
+tar -xzf "$ARCHIVE" -C "$DEST" 2>/dev/null
+EXPORT_DIR=$(find "$DEST" -maxdepth 1 -type d -name "migratix_*" | head -1)
+
+if [ -z "$EXPORT_DIR" ]; then
+    fail "Extraction échouée."
+    exit 1
+fi
+ok "Extrait dans : $EXPORT_DIR"
+
+rm -f "$ARCHIVE"
+
+step "Lancement de l'importation..."
+bash "$SCRIPT_DIR/import.sh" "$EXPORT_DIR"
