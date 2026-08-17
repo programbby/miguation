@@ -5,7 +5,6 @@ $ErrorActionPreference = "SilentlyContinue"
 function Write-Step($msg) { Write-Host "  >> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "  OK $msg" -ForegroundColor Green }
 function Write-Skip($msg) { Write-Host "  -- $msg" -ForegroundColor Yellow }
-function Write-Fail($msg) { Write-Host "  !! $msg" -ForegroundColor Red }
 
 $date = Get-Date -Format "yyyy-MM-dd_HH-mm"
 $export = Join-Path $Destination "migratix_$date"
@@ -32,7 +31,7 @@ $dossiers = @(
 foreach ($d in $dossiers) {
     if (Test-Path $d.src) {
         $cible = Join-Path $export "fichiers\$($d.dst)"
-        Write-Step "  $($d.src)..."
+        Write-Step "  $($d.dst)..."
         robocopy $d.src $cible /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS | Out-Null
         Write-OK "$($d.dst) copie"
     } else {
@@ -40,19 +39,68 @@ foreach ($d in $dossiers) {
     }
 }
 
-# ── 2. Logiciels installés ───────────────────────────────────────────────────
+# ── 2. Navigateurs ───────────────────────────────────────────────────────────
+Write-Step "Migration des navigateurs..."
+
+$browsers = @(
+    @{ nom = "Chrome";  profil = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default" },
+    @{ nom = "Edge";    profil = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default" },
+    @{ nom = "Brave";   profil = "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\Default" }
+)
+
+foreach ($b in $browsers) {
+    if (Test-Path $b.profil) {
+        $dst = Join-Path $export "navigateurs\$($b.nom)"
+        New-Item -ItemType Directory -Force -Path $dst | Out-Null
+
+        # Marque-pages
+        $bookmarks = Join-Path $b.profil "Bookmarks"
+        if (Test-Path $bookmarks) {
+            Copy-Item $bookmarks (Join-Path $dst "Bookmarks") -Force
+            Write-OK "$($b.nom) — marque-pages copies"
+        }
+
+        # Liste des extensions
+        $extPath = Join-Path $b.profil "Extensions"
+        if (Test-Path $extPath) {
+            $exts = Get-ChildItem $extPath -Directory | ForEach-Object {
+                $manifest = Join-Path $_.FullName (Get-ChildItem $_.FullName -Directory | Select-Object -First 1).Name
+                $manifest = Join-Path $manifest "manifest.json"
+                $nom = $_.Name
+                if (Test-Path $manifest) {
+                    $json = Get-Content $manifest | ConvertFrom-Json -ErrorAction SilentlyContinue
+                    if ($json.name) { $nom = $json.name }
+                }
+                [PSCustomObject]@{ ID = $_.Name; Nom = $nom }
+            }
+            $exts | Export-Csv (Join-Path $dst "extensions.csv") -NoTypeInformation -Encoding UTF8
+            Write-OK "$($b.nom) — $($exts.Count) extensions listees"
+        }
+
+        # Mots de passe — impossible a copier (chiffres avec le compte Windows)
+        $rapport += "NAVIGATEUR $($b.nom) : active la sync dans Parametres > Synchronisation pour recuperer tes mots de passe."
+    }
+}
+
+# Firefox (profil complet)
+$ffPath = "$env:APPDATA\Mozilla\Firefox\Profiles"
+if (Test-Path $ffPath) {
+    $dst = Join-Path $export "navigateurs\Firefox"
+    robocopy $ffPath $dst /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS | Out-Null
+    Write-OK "Firefox — profil complet copie"
+}
+
+# ── 3. Logiciels installés ───────────────────────────────────────────────────
 Write-Step "Export de la liste des logiciels..."
 
-$wingetOk = $false
 try {
+    New-Item -ItemType Directory -Force -Path (Join-Path $export "logiciels") | Out-Null
     winget export -o (Join-Path $export "logiciels\winget.json") --accept-source-agreements 2>$null
-    $wingetOk = $true
     Write-OK "Liste winget exportee"
 } catch {
     Write-Skip "winget non disponible"
 }
 
-# Liste complète via registre (backup si winget echoue)
 $logiciels = @()
 $regPaths = @(
     "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -62,71 +110,50 @@ $regPaths = @(
 foreach ($path in $regPaths) {
     Get-ItemProperty $path | Where-Object { $_.DisplayName } | ForEach-Object {
         $logiciels += [PSCustomObject]@{
-            Nom      = $_.DisplayName
-            Version  = $_.DisplayVersion
-            Editeur  = $_.Publisher
-            Licence  = if ($_.URLInfoAbout) { $_.URLInfoAbout } else { "Voir site editeur" }
+            Nom     = $_.DisplayName
+            Version = $_.DisplayVersion
+            Editeur = $_.Publisher
         }
     }
 }
-New-Item -ItemType Directory -Force -Path (Join-Path $export "logiciels") | Out-Null
 $logiciels | Sort-Object Nom -Unique | Export-Csv (Join-Path $export "logiciels\liste_complete.csv") -NoTypeInformation -Encoding UTF8
-Write-OK "$($logiciels.Count) logiciels enregistres dans liste_complete.csv"
+Write-OK "$($logiciels.Count) logiciels enregistres"
 
-# ── 3. Variables d'environnement ─────────────────────────────────────────────
+# ── 4. Variables d'environnement ─────────────────────────────────────────────
 Write-Step "Export des variables d'environnement..."
 $envVars = [System.Environment]::GetEnvironmentVariables("User")
 $envVars | ConvertTo-Json | Out-File (Join-Path $export "env_variables.json") -Encoding UTF8
 Write-OK "Variables exportees"
 
-# ── 4. Licences — détection et instructions ───────────────────────────────────
+# ── 5. Licences ───────────────────────────────────────────────────────────────
 Write-Step "Verification des licences..."
-$licences = @()
-
 $appsLicences = @(
     @{ nom = "Microsoft Office"; cle = "HKLM:\SOFTWARE\Microsoft\Office" },
     @{ nom = "Adobe Creative Cloud"; cle = "HKLM:\SOFTWARE\Adobe" },
     @{ nom = "Autodesk"; cle = "HKLM:\SOFTWARE\Autodesk" }
 )
-
 foreach ($app in $appsLicences) {
     if (Test-Path $app.cle) {
-        $licences += $app.nom
         Write-Skip "$($app.nom) detecte — licence a gerer manuellement"
-        $rapport += "LICENCE MANUELLE : $($app.nom) — connecte-toi avec ton compte sur le nouveau PC"
+        $rapport += "LICENCE : $($app.nom) — connecte-toi avec ton compte sur le nouveau PC."
     }
 }
 
-# ── 5. Rapport final ──────────────────────────────────────────────────────────
+# ── 6. Rapport ────────────────────────────────────────────────────────────────
 $rapport += ""
-$rapport += "=== MIGRATIX — RAPPORT D'EXPORTATION ==="
-$rapport += "Date : $date"
-$rapport += "Source : $env:COMPUTERNAME"
-$rapport += ""
-$rapport += "FICHIERS COPIES :"
-foreach ($d in $dossiers) {
-    if (Test-Path $d.src) { $rapport += "  OK  $($d.dst)" }
-}
-$rapport += ""
-if ($licences.Count -gt 0) {
-    $rapport += "LICENCES A GERER MANUELLEMENT (non copiables) :"
-    foreach ($l in $licences) { $rapport += "  --  $l" }
-    $rapport += ""
-    $rapport += "Pour chaque licence : connecte-toi avec ton compte sur le nouveau PC."
-} else {
-    $rapport += "Aucune licence protegee detectee."
-}
+$rapport += "=== MIGRATIX — RAPPORT ==="
+$rapport += "Date : $date | Source : $env:COMPUTERNAME"
 $rapport += ""
 $rapport += "PROCHAINE ETAPE :"
-$rapport += "  Branche ta cle USB / disque sur le nouveau PC"
-$rapport += "  Double-clique sur importer.bat"
-
+$rapport += "  Option 1 (cle USB) : copie ce dossier sur ta cle, branche sur le nouveau PC, lance importer.bat"
+$rapport += "  Option 2 (WiFi)    : lance transfert-wifi-serveur.bat sur cet ordi"
 $rapport | Out-File (Join-Path $export "RAPPORT.txt") -Encoding UTF8
 
 Write-Host ""
 Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
 Write-Host "  EXPORTATION TERMINEE" -ForegroundColor Green
-Write-Host "  Sauvegarde dans : $export" -ForegroundColor Green
-Write-Host "  Lis RAPPORT.txt avant de passer au nouveau PC" -ForegroundColor Green
+Write-Host "  $export" -ForegroundColor Green
 Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
+
+return $export
