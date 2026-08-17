@@ -2,8 +2,31 @@ $ErrorActionPreference = "SilentlyContinue"
 
 function Write-Step($msg) { Write-Host "  >> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "  OK $msg" -ForegroundColor Green }
+function Write-Fail($msg) { Write-Host "  !! $msg" -ForegroundColor Red }
 
-# 1. Exporter d'abord
+# ── 1. Créer le hotspot ───────────────────────────────────────────────────────
+$ssid = "Migratix"
+$mdp  = "migratix" + (Get-Random -Minimum 1000 -Maximum 9999)
+
+Write-Step "Creation du hotspot WiFi..."
+
+netsh wlan set hostednetwork mode=allow ssid="$ssid" key="$mdp" 2>$null | Out-Null
+$result = netsh wlan start hostednetwork 2>&1
+
+if ($result -match "Le réseau hébergé a démarré|hosted network started") {
+    Write-OK "Hotspot cree"
+} else {
+    Write-Fail "Impossible de creer le hotspot."
+    Write-Host ""
+    Write-Host "  Ton adaptateur WiFi ne supporte peut-etre pas cette fonction." -ForegroundColor Yellow
+    Write-Host "  Utilise le mode WiFi normal a la place (transfert-wifi-serveur.bat)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Details : $result" -ForegroundColor DarkGray
+    Read-Host "  Appuie sur Entree pour quitter"
+    exit 1
+}
+
+# ── 2. Exporter ───────────────────────────────────────────────────────────────
 Write-Step "Exportation en cours..."
 $exportDossier = & "$PSScriptRoot\export.ps1" -Destination "$env:TEMP\migratix-wifi"
 
@@ -11,28 +34,29 @@ if (!$exportDossier -or !(Test-Path $exportDossier)) {
     $exportDossier = (Get-ChildItem "$env:TEMP\migratix-wifi" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 }
 
-# 2. Créer le partage réseau
+# ── 3. Partager le dossier ────────────────────────────────────────────────────
 $nomPartage = "migratix-transfert"
 net share $nomPartage /delete 2>$null | Out-Null
 net share "$nomPartage=$exportDossier" /GRANT:Everyone,READ | Out-Null
-Write-OK "Dossier partage sur le reseau"
 
-# 3. Afficher l'IP locale
-$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.*" } | Select-Object -First 1).IPAddress
-
+# ── 4. Instructions ───────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "  ║  Sur le NOUVEAU PC, lance :                  ║" -ForegroundColor Green
-Write-Host "  ║  transfert-wifi-client.bat                   ║" -ForegroundColor Green
-Write-Host "  ║                                              ║" -ForegroundColor Green
-Write-Host "  ║  Quand il demande l'IP, entre :              ║" -ForegroundColor Green
-Write-Host "  ║  $ip" -ForegroundColor Yellow
-Write-Host "  ╚══════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "  ║  Sur le NOUVEAU PC :                             ║" -ForegroundColor Green
+Write-Host "  ║                                                  ║" -ForegroundColor Green
+Write-Host "  ║  1. Connecte-toi au WiFi :                       ║" -ForegroundColor Green
+Write-Host "  ║     Nom      : $ssid" -ForegroundColor Yellow
+Write-Host "  ║     Mot de passe : $mdp" -ForegroundColor Yellow
+Write-Host "  ║                                                  ║" -ForegroundColor Green
+Write-Host "  ║  2. Lance transfert-wifi-client.bat              ║" -ForegroundColor Green
+Write-Host "  ║     (l'IP est automatique, pas besoin de la taper)║" -ForegroundColor Green
+Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Laisse cette fenetre ouverte pendant le transfert." -ForegroundColor White
 Write-Host "  Appuie sur Entree quand le nouveau PC a termine." -ForegroundColor White
 Read-Host
 
-# 4. Supprimer le partage
+# ── 5. Nettoyage ──────────────────────────────────────────────────────────────
 net share $nomPartage /delete 2>$null | Out-Null
-Write-OK "Partage ferme. Transfert termine."
+netsh wlan stop hostednetwork 2>$null | Out-Null
+Write-OK "Hotspot ferme. Transfert termine."

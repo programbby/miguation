@@ -4,15 +4,21 @@ function Write-Step($msg) { Write-Host "  >> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "  OK $msg" -ForegroundColor Green }
 
 Write-Host ""
-$ip = Read-Host "  Entre l'IP affichee sur l'ancien PC"
-$partage = "\\$ip\migratix-transfert"
+Write-Host "  Assure-toi d'etre connecte au WiFi 'Migratix' avant de continuer." -ForegroundColor Yellow
+Write-Host "  Appuie sur Entree quand c'est fait..."
+Read-Host
 
-Write-Step "Connexion a $partage ..."
+# L'IP du hotspot Windows est toujours 192.168.137.1
+$partage = "\\192.168.137.1\migratix-transfert"
+
+Write-Step "Connexion a l'ancien PC..."
 
 if (!(Test-Path $partage)) {
+    Write-Host ""
     Write-Host "  ERREUR : impossible de joindre l'ancien PC." -ForegroundColor Red
-    Write-Host "  Verifie que les deux PCs sont sur le meme WiFi" -ForegroundColor Yellow
-    Write-Host "  et que la fenetre serveur est encore ouverte." -ForegroundColor Yellow
+    Write-Host "  Verifie que :" -ForegroundColor Yellow
+    Write-Host "    - Tu es bien connecte au WiFi 'Migratix'" -ForegroundColor Yellow
+    Write-Host "    - La fenetre serveur est encore ouverte sur l'ancien PC" -ForegroundColor Yellow
     exit 1
 }
 
