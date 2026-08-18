@@ -22,9 +22,9 @@ else
     read -rp "  Où sauvegarder ? (ex: /Volumes/USB/migration) : " DEST
 fi
 
-EXPORT="$DEST/migratix_$DATE"
+EXPORT="$DEST/miguation_$DATE"
 mkdir -p "$EXPORT"
-LOG="$EXPORT/migratix.log"
+LOG="$EXPORT/miguation.log"
 echo "=== EXPORT DÉMARRÉ ===" > "$LOG"
 
 # ── Navigateurs ouverts ───────────────────────────────────────────────────────
@@ -180,14 +180,14 @@ fi
 
 # ── Rapport ───────────────────────────────────────────────────────────────────
 {
-    echo "=== MIGRATIX — RAPPORT ==="
+    echo "=== MIGUATION — RAPPORT ==="
     echo "Date : $DATE | Système : $OS | Machine : $(hostname)"
     echo ""
     echo "NAVIGATEURS : active la synchronisation dans Paramètres > Sync pour récupérer tes mots de passe."
     echo ""
     echo "PROCHAINE ÉTAPE :"
-    echo "  Clé USB : copie ce dossier, lance migratix.sh sur le nouveau PC"
-    echo "  WiFi    : lance migratix.sh → option 3 sur cet ordi"
+    echo "  Clé USB : copie ce dossier, lance miguation.sh sur le nouveau PC"
+    echo "  WiFi    : lance miguation.sh → option 3 sur cet ordi"
 } > "$EXPORT/RAPPORT.txt"
 
 echo ""

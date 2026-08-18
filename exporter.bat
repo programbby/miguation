@@ -2,7 +2,7 @@
 chcp 65001 >nul
 echo.
 echo  ╔══════════════════════════════════════╗
-echo  ║         MIGRATIX — EXPORTATION       ║
+echo  ║         MIGUATION — EXPORTATION       ║
 echo  ╚══════════════════════════════════════╝
 echo.
 echo  Ce script va copier tes fichiers et parametres

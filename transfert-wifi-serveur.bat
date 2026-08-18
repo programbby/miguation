@@ -2,7 +2,7 @@
 chcp 65001 >nul
 echo.
 echo  ╔══════════════════════════════════════╗
-echo  ║     MIGRATIX — TRANSFERT WiFi        ║
+echo  ║     MIGUATION — TRANSFERT WiFi        ║
 echo  ║         PC SOURCE (ancien)           ║
 echo  ╚══════════════════════════════════════╝
 echo.

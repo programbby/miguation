@@ -16,9 +16,9 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 $date = Get-Date -Format "yyyy-MM-dd_HH-mm"
-$export = Join-Path $Destination "migratix_$date"
+$export = Join-Path $Destination "miguation_$date"
 New-Item -ItemType Directory -Force -Path $export | Out-Null
-$LOG = Join-Path $export "migratix.log"
+$LOG = Join-Path $export "miguation.log"
 Log "=== EXPORTATION DÉMARRÉE ==="
 
 # ── Vérification navigateurs ouverts ─────────────────────────────────────────
@@ -199,7 +199,7 @@ Write-OK "$($varsPropres.Count) variables exportées, $($secretsTrouves.Count) s
 
 # ── Rapport ───────────────────────────────────────────────────────────────────
 @(
-    "=== MIGRATIX — RAPPORT ==="
+    "=== MIGUATION — RAPPORT ==="
     "Date : $date | Machine : $env:COMPUTERNAME"
     ""
     if ($secretsTrouves.Count -gt 0) {

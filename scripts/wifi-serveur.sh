@@ -12,7 +12,7 @@ fail() { echo -e "  ${RED}!! $1${RESET}"; }
 # ── Mots de passe forts ───────────────────────────────────────────────────────
 MDP_WIFI=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 20)
 TOKEN=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 12)
-SSID="Migratix"
+SSID="Miguation"
 SERVER_PID=""
 ARCHIVE=""
 WIFI_IF=""
@@ -30,10 +30,10 @@ trap cleanup EXIT
 
 # ── Exportation ───────────────────────────────────────────────────────────────
 step "Exportation en cours..."
-EXPORT_DIR=$(bash "$SCRIPT_DIR/export.sh" "$HOME/.migratix-wifi-tmp" 2>/dev/null | tail -1)
+EXPORT_DIR=$(bash "$SCRIPT_DIR/export.sh" "$HOME/.miguation-wifi-tmp" 2>/dev/null | tail -1)
 
 if [ -z "$EXPORT_DIR" ] || [ ! -d "$EXPORT_DIR" ]; then
-    EXPORT_DIR=$(ls -td "$HOME/.migratix-wifi-tmp"/migratix_* 2>/dev/null | head -1)
+    EXPORT_DIR=$(ls -td "$HOME/.miguation-wifi-tmp"/miguation_* 2>/dev/null | head -1)
 fi
 if [ -z "$EXPORT_DIR" ] || [ ! -d "$EXPORT_DIR" ]; then
     fail "Exportation échouée."
@@ -43,7 +43,7 @@ ok "Export dans : $EXPORT_DIR"
 
 # ── Créer archive unique ───────────────────────────────────────────────────────
 step "Création de l'archive..."
-ARCHIVE="$(dirname "$EXPORT_DIR")/migratix.tar.gz"
+ARCHIVE="$(dirname "$EXPORT_DIR")/miguation.tar.gz"
 tar -czf "$ARCHIVE" -C "$(dirname "$EXPORT_DIR")" "$(basename "$EXPORT_DIR")"
 ok "Archive créée ($(du -sh "$ARCHIVE" | cut -f1))"
 
@@ -80,7 +80,7 @@ SERVE_DIR="$(dirname "$ARCHIVE")"
 # Créer un sous-dossier avec le token pour sécuriser l'URL
 TOKEN_DIR="$SERVE_DIR/$TOKEN"
 mkdir -p "$TOKEN_DIR"
-ln -sf "$ARCHIVE" "$TOKEN_DIR/migratix.tar.gz"
+ln -sf "$ARCHIVE" "$TOKEN_DIR/miguation.tar.gz"
 
 cd "$SERVE_DIR"
 python3 -m http.server $PORT &>/dev/null &
@@ -96,9 +96,9 @@ echo -e "  ${GREEN}║   1. Connecte-toi au WiFi :                              
 echo -e "  ${YELLOW}║      Nom      : $SSID                              ║${RESET}"
 echo -e "  ${YELLOW}║      Mot de passe : $MDP_WIFI                ║${RESET}"
 echo -e "  ${GREEN}║                                                          ║${RESET}"
-echo -e "  ${GREEN}║   2. Lance migratix.sh → option 4                        ║${RESET}"
+echo -e "  ${GREEN}║   2. Lance miguation.sh → option 4                        ║${RESET}"
 echo -e "  ${GREEN}║      URL de téléchargement :                             ║${RESET}"
-echo -e "  ${YELLOW}║      http://$IP:$PORT/$TOKEN/migratix.tar.gz  ║${RESET}"
+echo -e "  ${YELLOW}║      http://$IP:$PORT/$TOKEN/miguation.tar.gz  ║${RESET}"
 echo -e "  ${GREEN}╚══════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 echo "  Laisse cette fenêtre ouverte. Appuie sur Entrée quand c'est fini."

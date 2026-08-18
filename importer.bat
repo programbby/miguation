@@ -2,7 +2,7 @@
 chcp 65001 >nul
 echo.
 echo  ╔══════════════════════════════════════╗
-echo  ║         MIGRATIX — IMPORTATION       ║
+echo  ║         MIGUATION — IMPORTATION       ║
 echo  ╚══════════════════════════════════════╝
 echo.
 echo  Ce script va restaurer tes fichiers sur ce nouveau PC.

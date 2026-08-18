@@ -20,8 +20,8 @@ if [ -z "$URL" ]; then
     exit 1
 fi
 
-DEST="$HOME/migratix-import"
-ARCHIVE="$DEST/migratix.tar.gz"
+DEST="$HOME/miguation-import"
+ARCHIVE="$DEST/miguation.tar.gz"
 mkdir -p "$DEST"
 
 step "Téléchargement de l'archive..."
@@ -43,7 +43,7 @@ ok "Archive téléchargée ($(du -sh "$ARCHIVE" | cut -f1))"
 
 step "Extraction..."
 tar -xzf "$ARCHIVE" -C "$DEST" 2>/dev/null
-EXPORT_DIR=$(find "$DEST" -maxdepth 1 -type d -name "migratix_*" | head -1)
+EXPORT_DIR=$(find "$DEST" -maxdepth 1 -type d -name "miguation_*" | head -1)
 
 if [ -z "$EXPORT_DIR" ]; then
     fail "Extraction échouée."

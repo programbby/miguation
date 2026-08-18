@@ -13,7 +13,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 $chars = (48..57) + (65..90) + (97..122)
 $mdpWifi = -join ($chars | Get-Random -Count 20 | ForEach-Object { [char]$_ })
 $mdpUser = -join ($chars | Get-Random -Count 16 | ForEach-Object { [char]$_ })
-$ssid      = "Migratix"
+$ssid      = "Miguation"
 $nomPartage = "mgx-share"
 $tempUser   = "mgx-tmp"
 
@@ -41,11 +41,11 @@ function Stop-Tout {
 # ── Exporter ──────────────────────────────────────────────────────────────────
 try {
     Write-Step "Exportation en cours..."
-    $exportDossier = & "$PSScriptRoot\export.ps1" -Destination "$env:TEMP\migratix-wifi"
+    $exportDossier = & "$PSScriptRoot\export.ps1" -Destination "$env:TEMP\miguation-wifi"
 
     # Récupérer le chemin même si export.ps1 a écrit d'autres choses dans le pipeline
     if (-not $exportDossier -or ($exportDossier -is [array])) {
-        $exportDossier = Get-ChildItem "$env:TEMP\migratix-wifi" -Directory |
+        $exportDossier = Get-ChildItem "$env:TEMP\miguation-wifi" -Directory |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
     }
 
@@ -104,7 +104,7 @@ try {
     # ── Utilisateur temporaire pour le partage ────────────────────────────────
     Write-Step "Création du partage sécurisé..."
     $secPass = ConvertTo-SecureString $mdpUser -AsPlainText -Force
-    New-LocalUser -Name $tempUser -Password $secPass -Description "Migratix temp" `
+    New-LocalUser -Name $tempUser -Password $secPass -Description "Miguation temp" `
         -PasswordNeverExpires -AccountNeverExpires -ErrorAction Stop | Out-Null
     $userCreé = $true
 

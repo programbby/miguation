@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
 echo " ╔══════════════════════════════════════╗"
-echo " ║            MIGRATIX                  ║"
+echo " ║            MIGUATION                  ║"
 echo " ╚══════════════════════════════════════╝"
 echo ""
 echo " Système détecté : $OS"
