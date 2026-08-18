@@ -120,8 +120,12 @@ if (Test-Path $csvFile) {
 # ── Variables d'environnement ─────────────────────────────────────────────────
 Write-Step "Restauration des variables d'environnement..."
 
+# Comparaison sur le nom exact (et non par sous-chaîne) : sinon "PATH" happerait
+# PYTHONPATH/GOPATH et "HOME" happerait JAVA_HOME, qui ne seraient jamais restaurés.
 $protegees = @("PATH","PATHEXT","TEMP","TMP","USERPROFILE","APPDATA","LOCALAPPDATA",
-               "PROGRAMFILES","PROGRAMFILES(X86)","WINDIR","SYSTEMROOT","COMSPEC","USERNAME")
+               "PROGRAMFILES","PROGRAMFILES(X86)","PROGRAMDATA","WINDIR","SYSTEMROOT",
+               "SYSTEMDRIVE","COMSPEC","USERNAME","USERDOMAIN","COMPUTERNAME",
+               "HOMEDRIVE","HOMEPATH","PUBLIC","ALLUSERSPROFILE","PSMODULEPATH","OS")
 
 $envFile = Join-Path $Source "env_variables.json"
 if (Test-Path $envFile) {

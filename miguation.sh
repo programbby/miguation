@@ -23,7 +23,7 @@ echo "   2) Importer (dossier → cet ordi)"
 echo "   3) Transférer via WiFi (serveur — cet ordi envoie)"
 echo "   4) Transférer via WiFi (client — cet ordi reçoit)"
 echo ""
-read -p " Ton choix (1/2/3/4) : " CHOIX
+read -rp " Ton choix (1/2/3/4) : " CHOIX
 
 case "$CHOIX" in
     1) bash "$SCRIPT_DIR/scripts/export.sh" ;;

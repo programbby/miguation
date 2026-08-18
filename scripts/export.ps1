@@ -43,8 +43,7 @@ foreach ($d in $dossiersSources) {
         $tailleTotal += (Get-ChildItem $d -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
     }
 }
-$disque = (Get-Item $Destination).PSDrive.Name + ":"
-$libre = (Get-PSDrive ($Destination.Substring(0,1)) -ErrorAction SilentlyContinue).Free
+$libre = (Get-Item $Destination -ErrorAction SilentlyContinue).PSDrive.Free
 if ($libre -and $tailleTotal -gt $libre) {
     $manque = [math]::Round(($tailleTotal - $libre) / 1GB, 1)
     Write-Fail "Espace insuffisant sur la destination. Il manque environ $manque Go."
@@ -57,7 +56,6 @@ Write-OK "Espace OK ($(([math]::Round($tailleTotal/1GB,1))) Go à copier)"
 Write-Step "Copie des fichiers personnels..."
 
 $exclusions = @("node_modules",".venv","__pycache__",".cache",".git","dist","build",".next","vendor","*.tmp","Thumbs.db")
-$xdArgs = $exclusions -join " "
 
 $dossiers = @(
     @{ src = "$env:USERPROFILE\Documents";  dst = "Documents" },
@@ -74,7 +72,9 @@ foreach ($d in $dossiers) {
     if (Test-Path $d.src) {
         $cible = Join-Path $export "fichiers\$($d.dst)"
         New-Item -ItemType Directory -Force -Path $cible | Out-Null
-        $rc = (robocopy $d.src $cible /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS /XD $exclusions).ExitCode
+        # robocopy renvoie des lignes de texte, pas un objet : seul $LASTEXITCODE
+        # porte le code de retour (0-7 = succès, 8+ = échec).
+        robocopy $d.src $cible /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS /XD $exclusions | Out-Null
         if ($LASTEXITCODE -gt 7) {
             Write-Fail "$($d.dst) — copie incomplète (code $LASTEXITCODE)"
             Log "ERREUR robocopy $($d.dst) code $LASTEXITCODE"
@@ -173,13 +173,19 @@ Write-OK "Registre — $($logiciels.Count) logiciels listés"
 # ── Variables d'environnement (avec filtre secrets) ───────────────────────────
 Write-Step "Export des variables d'environnement..."
 
-$secretPattern = 'KEY|SECRET|TOKEN|PASSWORD|PASS|PASSWD|CREDENTIAL|API|AUTH|PRIVATE|OAUTH'
+# Doit rester identique au MIGUATION_SECRET_PATTERN de scripts/lib/common.sh —
+# une divergence entre les deux plateformes est un trou de sécurité silencieux.
+# Les mots courts sont délimités par _ ou par les bornes du nom, sinon
+# COMPASS_HOME, RAPID_TIMEOUT et MONKEY_MODE sont pris pour des secrets.
+$secretPattern = 'SECRET|TOKEN|PASSWORD|PASSWD|PASSPHRASE|CREDENTIAL|PRIVATE|OAUTH|APIKEY|(^|_)(KEY|API|AUTH|PASS|PAT|SALT|SIG|SIGNATURE|CERT|SESSION|COOKIE)(_|$)'
+$secretValuePattern = '://[^/\s]+:[^/\s]+@'
 $vars = [System.Environment]::GetEnvironmentVariables("User")
 $varsPropres = @{}
 $secretsTrouves = @()
 
 foreach ($key in $vars.Keys) {
-    if ($key -match $secretPattern) {
+    $valeur = [string]$vars[$key]
+    if (($key -match $secretPattern) -or ($valeur -match $secretValuePattern)) {
         $secretsTrouves += $key
     } else {
         $varsPropres[$key] = $vars[$key]
