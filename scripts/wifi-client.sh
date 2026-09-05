@@ -9,7 +9,7 @@ ok()   { echo -e "  ${GREEN}OK $1${RESET}"; }
 fail() { echo -e "  ${RED}!! $1${RESET}"; }
 
 echo ""
-echo -e "  ${YELLOW}Connecte-toi d'abord au WiFi 'Migratix'.${RESET}"
+echo -e "  ${YELLOW}Connecte-toi d'abord au WiFi 'Miguation'.${RESET}"
 echo -e "  ${YELLOW}(Le mot de passe est affiché sur l'ancien PC)${RESET}"
 read -rp "  Appuie sur Entrée quand tu es connecté..."
 

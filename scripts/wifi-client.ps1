@@ -5,7 +5,7 @@ function Write-OK($msg)   { Write-Host "  OK $msg" -ForegroundColor Green }
 function Write-Fail($msg) { Write-Host "  !! $msg" -ForegroundColor Red }
 
 Write-Host ""
-Write-Host "  Connecte-toi au WiFi 'Migratix' avant de continuer." -ForegroundColor Yellow
+Write-Host "  Connecte-toi au WiFi 'Miguation' avant de continuer." -ForegroundColor Yellow
 Write-Host "  (Le mot de passe WiFi est affiché sur l'ancien PC)" -ForegroundColor Yellow
 Write-Host ""
 Read-Host "  Appuie sur Entree quand c'est fait"
@@ -27,7 +27,7 @@ Remove-Job $job -Force
 if (-not $ok -or -not (Test-Path $partage)) {
     Write-Fail "Impossible de joindre l'ancien PC."
     Write-Host "  Vérifie que :" -ForegroundColor Yellow
-    Write-Host "    - Tu es bien connecté au WiFi 'Migratix'" -ForegroundColor Yellow
+    Write-Host "    - Tu es bien connecté au WiFi 'Miguation'" -ForegroundColor Yellow
     Write-Host "    - La fenêtre serveur est encore ouverte sur l'ancien PC" -ForegroundColor Yellow
     Write-Host "    - Le mot de passe du partage est correct" -ForegroundColor Yellow
     pause; exit 1
