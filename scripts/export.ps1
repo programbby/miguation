@@ -9,9 +9,8 @@ function Write-Skip($msg) { Write-Host "  -- $msg" -ForegroundColor Yellow }
 function Write-Fail($msg) { Write-Host "  !! $msg" -ForegroundColor Red }
 function Log($msg)        { if ($LOG) { "$(Get-Date -f 'HH:mm:ss') $msg" | Out-File $LOG -Append -Encoding UTF8 } }
 
-# ── Vérification admin ───────────────────────────────────────────────────────
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole('Administrators')) {
-    Write-Fail "Lance ce script en tant qu'Administrateur (clic droit → Exécuter en tant qu'administrateur)."
+    Write-Fail "Lance ce script en tant qu'Administrateur."
     pause; exit 1
 }
 
@@ -19,31 +18,32 @@ $date = Get-Date -Format "yyyy-MM-dd_HH-mm"
 $export = Join-Path $Destination "miguation_$date"
 New-Item -ItemType Directory -Force -Path $export | Out-Null
 $LOG = Join-Path $export "miguation.log"
-Log "=== EXPORTATION DÉMARRÉE ==="
+Log "=== EXPORTATION DEMARREE ==="
 
-# ── Vérification navigateurs ouverts ─────────────────────────────────────────
+# Navigateurs ouverts
 $browsersOuverts = @("chrome","firefox","msedge","brave") | Where-Object { Get-Process $_ -ErrorAction SilentlyContinue }
 if ($browsersOuverts) {
     Write-Host ""
     Write-Host "  ATTENTION : ces navigateurs sont ouverts :" -ForegroundColor Yellow
     $browsersOuverts | ForEach-Object { Write-Host "    - $_" -ForegroundColor Yellow }
-    Write-Host "  Ferme-les pour une copie complète des marque-pages." -ForegroundColor Yellow
-    $rep = Read-Host "  Continuer quand même ? (o/n)"
+    Write-Host "  Ferme-les pour une copie complete des marque-pages." -ForegroundColor Yellow
+    $rep = Read-Host "  Continuer quand meme ? (o/n)"
     if ($rep -ne 'o') { exit 0 }
 }
 
-# ── Vérification espace disque ────────────────────────────────────────────────
-Write-Step "Vérification de l'espace disque..."
-$dossiersSources = @("$env:USERPROFILE\Documents","$env:USERPROFILE\Desktop","$env:USERPROFILE\Pictures",
+# Espace disque
+Write-Step "Verification de l'espace disque..."
+$dossiersSources = @(
+    "$env:USERPROFILE\Documents","$env:USERPROFILE\Desktop","$env:USERPROFILE\Pictures",
     "$env:USERPROFILE\Videos","$env:USERPROFILE\Music","$env:USERPROFILE\Downloads",
-    "$env:USERPROFILE\projets","$env:USERPROFILE\.claude")
+    "$env:USERPROFILE\projets","$env:USERPROFILE\.claude"
+)
 $tailleTotal = 0
 foreach ($d in $dossiersSources) {
     if (Test-Path $d) {
         $tailleTotal += (Get-ChildItem $d -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
     }
 }
-$disque = (Get-Item $Destination).PSDrive.Name + ":"
 $libre = (Get-PSDrive ($Destination.Substring(0,1)) -ErrorAction SilentlyContinue).Free
 if ($libre -and $tailleTotal -gt $libre) {
     $manque = [math]::Round(($tailleTotal - $libre) / 1GB, 1)
@@ -51,13 +51,12 @@ if ($libre -and $tailleTotal -gt $libre) {
     Log "ERREUR espace disque insuffisant"
     pause; exit 1
 }
-Write-OK "Espace OK ($(([math]::Round($tailleTotal/1GB,1))) Go à copier)"
+Write-OK "Espace OK ($([math]::Round($tailleTotal/1GB,1)) Go a copier)"
 
-# ── Fichiers utilisateur ──────────────────────────────────────────────────────
+# Fichiers utilisateur
 Write-Step "Copie des fichiers personnels..."
 
-$exclusions = @("node_modules",".venv","__pycache__",".cache",".git","dist","build",".next","vendor","*.tmp","Thumbs.db")
-$xdArgs = $exclusions -join " "
+$exclusions = @("node_modules",".venv","__pycache__",".cache",".git","dist","build",".next","vendor")
 
 $dossiers = @(
     @{ src = "$env:USERPROFILE\Documents";  dst = "Documents" },
@@ -74,12 +73,12 @@ foreach ($d in $dossiers) {
     if (Test-Path $d.src) {
         $cible = Join-Path $export "fichiers\$($d.dst)"
         New-Item -ItemType Directory -Force -Path $cible | Out-Null
-        $rc = (robocopy $d.src $cible /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS /XD $exclusions).ExitCode
+        robocopy $d.src $cible /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS /XD $exclusions | Out-Null
         if ($LASTEXITCODE -gt 7) {
-            Write-Fail "$($d.dst) — copie incomplète (code $LASTEXITCODE)"
+            Write-Fail "$($d.dst) - copie incomplete (code $LASTEXITCODE)"
             Log "ERREUR robocopy $($d.dst) code $LASTEXITCODE"
         } else {
-            Write-OK "$($d.dst) copié"
+            Write-OK "$($d.dst) copie"
             Log "OK $($d.dst)"
         }
     } else {
@@ -87,7 +86,7 @@ foreach ($d in $dossiers) {
     }
 }
 
-# ── Navigateurs ───────────────────────────────────────────────────────────────
+# Navigateurs
 Write-Step "Migration des navigateurs..."
 
 $browsers = @(
@@ -104,7 +103,7 @@ foreach ($b in $browsers) {
         $bookmarks = Join-Path $b.profil "Bookmarks"
         if (Test-Path $bookmarks) {
             Copy-Item $bookmarks (Join-Path $dst "Bookmarks") -Force
-            Write-OK "$($b.nom) — marque-pages copiés"
+            Write-OK "$($b.nom) - marque-pages copies"
             Log "OK $($b.nom) marque-pages"
         }
 
@@ -126,12 +125,12 @@ foreach ($b in $browsers) {
                 [PSCustomObject]@{ ID = $extId; Nom = $nom }
             }
             $exts | Export-Csv (Join-Path $dst "extensions.csv") -NoTypeInformation -Encoding UTF8
-            Write-OK "$($b.nom) — $($exts.Count) extensions listées"
+            Write-OK "$($b.nom) - $($exts.Count) extensions listees"
         }
     }
 }
 
-# Firefox (profil complet + profiles.ini)
+# Firefox
 $ffBase = "$env:APPDATA\Mozilla\Firefox"
 $ffProfiles = "$ffBase\Profiles"
 if (Test-Path $ffProfiles) {
@@ -142,17 +141,17 @@ if (Test-Path $ffProfiles) {
     if (Test-Path $profilesIni) {
         Copy-Item $profilesIni "$dst\profiles.ini" -Force
     }
-    Write-OK "Firefox — profil complet copié (avec profiles.ini)"
+    Write-OK "Firefox - profil complet copie"
     Log "OK Firefox"
 }
 
-# ── Logiciels ─────────────────────────────────────────────────────────────────
+# Logiciels
 Write-Step "Export de la liste des logiciels..."
 New-Item -ItemType Directory -Force -Path (Join-Path $export "logiciels") | Out-Null
 
 try {
     winget export -o (Join-Path $export "logiciels\winget.json") --accept-source-agreements 2>$null
-    Write-OK "winget — liste exportée"
+    Write-OK "winget - liste exportee"
     Log "OK winget export"
 } catch {
     Write-Skip "winget non disponible"
@@ -168,9 +167,9 @@ $logiciels = @()
     }
 }
 $logiciels | Sort-Object Nom -Unique | Export-Csv (Join-Path $export "logiciels\liste_complete.csv") -NoTypeInformation -Encoding UTF8
-Write-OK "Registre — $($logiciels.Count) logiciels listés"
+Write-OK "Registre - $($logiciels.Count) logiciels listes"
 
-# ── Variables d'environnement (avec filtre secrets) ───────────────────────────
+# Variables d'environnement
 Write-Step "Export des variables d'environnement..."
 
 $secretPattern = 'KEY|SECRET|TOKEN|PASSWORD|PASS|PASSWD|CREDENTIAL|API|AUTH|PRIVATE|OAUTH'
@@ -190,36 +189,37 @@ $varsPropres | ConvertTo-Json | Out-File (Join-Path $export "env_variables.json"
 
 if ($secretsTrouves.Count -gt 0) {
     Write-Host ""
-    Write-Host "  SECRETS DÉTECTÉS — non copiés (pour ta sécurité) :" -ForegroundColor Yellow
+    Write-Host "  SECRETS DETECTES - non copies (pour ta securite) :" -ForegroundColor Yellow
     $secretsTrouves | ForEach-Object { Write-Host "    - $_" -ForegroundColor Yellow }
-    Write-Host "  Réentre-les manuellement sur le nouveau PC." -ForegroundColor Yellow
-    Log "SECRETS IGNORÉS : $($secretsTrouves -join ', ')"
+    Write-Host "  Reentre-les manuellement sur le nouveau PC." -ForegroundColor Yellow
+    Log "SECRETS IGNORES : $($secretsTrouves -join ', ')"
 }
-Write-OK "$($varsPropres.Count) variables exportées, $($secretsTrouves.Count) secrets ignorés"
+Write-OK "$($varsPropres.Count) variables exportees, $($secretsTrouves.Count) secrets ignores"
 
-# ── Rapport ───────────────────────────────────────────────────────────────────
-@(
-    "=== MIGUATION — RAPPORT ==="
+# Rapport
+$rapport = @(
+    "=== MIGUATION - RAPPORT ==="
     "Date : $date | Machine : $env:COMPUTERNAME"
     ""
-    if ($secretsTrouves.Count -gt 0) {
-        "SECRETS NON COPIÉS (à réentrer manuellement) :"
-        $secretsTrouves | ForEach-Object { "  - $_" }
-        ""
-    }
-    "NAVIGATEURS : active la synchronisation dans Paramètres > Synchronisation pour récupérer tes mots de passe."
-    ""
-    "PROCHAINE ÉTAPE :"
-    "  Clé USB : copie ce dossier, lance importer.bat sur le nouveau PC."
-    "  WiFi    : lance transfert-wifi-serveur.bat sur cet ordinateur."
-) | Out-File (Join-Path $export "RAPPORT.txt") -Encoding UTF8
+)
+if ($secretsTrouves.Count -gt 0) {
+    $rapport += "SECRETS NON COPIES (a reentrer manuellement) :"
+    $secretsTrouves | ForEach-Object { $rapport += "  - $_" }
+    $rapport += ""
+}
+$rapport += "NAVIGATEURS : active la synchronisation dans Parametres > Synchronisation pour recuperer tes mots de passe."
+$rapport += ""
+$rapport += "PROCHAINE ETAPE :"
+$rapport += "  Cle USB : copie ce dossier, lance importer.bat sur le nouveau PC."
+$rapport += "  WiFi    : lance transfert-wifi-serveur.bat sur cet ordinateur."
+$rapport | Out-File (Join-Path $export "RAPPORT.txt") -Encoding UTF8
 
-Log "=== EXPORTATION TERMINÉE ==="
+Log "=== EXPORTATION TERMINEE ==="
 Write-Host ""
-Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
-Write-Host "  EXPORTATION TERMINÉE" -ForegroundColor Green
+Write-Host "  +========================================+" -ForegroundColor Green
+Write-Host "  EXPORTATION TERMINEE" -ForegroundColor Green
 Write-Host "  $export" -ForegroundColor Green
-Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
+Write-Host "  +========================================+" -ForegroundColor Green
 Write-Host ""
 
 return $export

@@ -52,7 +52,7 @@ foreach ($d in $dossiers) {
         New-Item -ItemType Directory -Force -Path $d.dst | Out-Null
         robocopy $chemin $d.dst /E /COPY:DAT /R:1 /W:0 /NP /NFL /NDL /NJH /NJS /XD $exclusions | Out-Null
         if ($LASTEXITCODE -gt 7) {
-            Write-Fail "$($d.src) — restauration incomplète (code $LASTEXITCODE)"
+            Write-Fail "$($d.src) - restauration incomplète (code $LASTEXITCODE)"
         } else {
             Write-OK "$($d.src) restauré"
         }
@@ -75,9 +75,9 @@ foreach ($b in $browsers) {
     if (Test-Path $bk) {
         if (Test-Path $b.profil) {
             Copy-Item $bk (Join-Path $b.profil "Bookmarks") -Force
-            Write-OK "$($b.nom) — marque-pages restaurés (redémarre le navigateur)"
+            Write-OK "$($b.nom) - marque-pages restaurés (redémarre le navigateur)"
         } else {
-            Write-Skip "$($b.nom) — pas installé sur ce PC"
+            Write-Skip "$($b.nom) - pas installé sur ce PC"
         }
     }
     $extCsv = Join-Path $Source "navigateurs\$($b.nom)\extensions.csv"
@@ -98,7 +98,7 @@ if (Test-Path $ffSrc) {
     if (Test-Path $ffIni) {
         Copy-Item $ffIni "$ffDst\profiles.ini" -Force
     }
-    Write-OK "Firefox — profil restauré"
+    Write-OK "Firefox - profil restauré"
 }
 
 # ── Logiciels ─────────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ Write-Step "Réinstallation des logiciels..."
 $wingetFile = Join-Path $Source "logiciels\winget.json"
 if (Test-Path $wingetFile) {
     winget import -i $wingetFile --accept-package-agreements --accept-source-agreements --ignore-unavailable --ignore-versions 2>$null
-    Write-OK "winget — logiciels réinstallés"
+    Write-OK "winget - logiciels réinstallés"
 } else {
     Write-Skip "winget.json absent"
 }
@@ -146,16 +146,16 @@ if (Test-Path $envFile) {
 $rapportFile = Join-Path $Source "RAPPORT.txt"
 if (Test-Path $rapportFile) {
     Write-Host ""
-    Write-Host "  ════════ ACTIONS MANUELLES ════════" -ForegroundColor Yellow
+    Write-Host "  ======== ACTIONS MANUELLES ========" -ForegroundColor Yellow
     Get-Content $rapportFile | Where-Object { $_ -match "SECRETS|NAVIGATEUR|LICENCE" } | ForEach-Object {
         Write-Host "  $_" -ForegroundColor Yellow
     }
-    Write-Host "  ════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "  ====================================" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
-Write-Host "  IMPORTATION TERMINÉE" -ForegroundColor Green
-Write-Host "  Redémarre ton PC pour que tout soit actif" -ForegroundColor Green
-Write-Host "  ════════════════════════════════════════" -ForegroundColor Green
+Write-Host "  ========================================" -ForegroundColor Green
+Write-Host "  IMPORTATION TERMINEE" -ForegroundColor Green
+Write-Host "  Redemarre ton PC pour que tout soit actif" -ForegroundColor Green
+Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ""
