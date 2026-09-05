@@ -106,6 +106,10 @@ try {
 
     net share "$nomPartage=$exportDossier" /GRANT:"$tempUser,READ" 2>$null | Out-Null
     $partageOK = $true
+
+    # Permissions NTFS pour l'utilisateur temporaire (sans quoi Test-Path echoue)
+    icacls $exportDossier /grant "${tempUser}:(OI)(CI)R" /T /C 2>$null | Out-Null
+
     Write-OK "Partage cree (utilisateur temporaire isole)"
 
     # Afficher les infos
